@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'models/category.dart';
+import 'models/transaction.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 import 'utils/default_data.dart';
@@ -12,7 +14,9 @@ void main() async {
 
   await Hive.initFlutter();
   Hive.registerAdapter(CategoryAdapter());
+  Hive.registerAdapter(TransactionAdapter());
   await Hive.openBox<Category>('categories');
+  await Hive.openBox<Transaction>('transactions');
 
   final categoryBox = Hive.box<Category>('categories');
   if (categoryBox.isEmpty) {
@@ -35,6 +39,13 @@ class EvButcemApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
+      locale: const Locale('tr', 'TR'),
+      supportedLocales: const [Locale('tr', 'TR')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: const HomeScreen(),
     );
   }

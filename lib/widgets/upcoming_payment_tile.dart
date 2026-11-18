@@ -34,8 +34,8 @@ class UpcomingPaymentTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isUrgent
-              ? Colors.red.withOpacity(0.3)
-              : Colors.grey.withOpacity(0.12),
+              ? Colors.red.withValues(alpha: 0.3)
+              : Colors.grey.withValues(alpha: 0.12),
         ),
       ),
       child: Row(
