@@ -22,13 +22,16 @@ class CreditCardAdapter extends TypeAdapter<CreditCard> {
       color: fields[7] as String?,
       isActive: fields[8] as bool,
       createdAt: fields[9] as DateTime,
+      // Missing on data saved before last-four / minimum payment existed.
+      lastFourDigits: fields[10] as String?,
+      minimumPayment: fields[11] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, CreditCard obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -48,7 +51,11 @@ class CreditCardAdapter extends TypeAdapter<CreditCard> {
       ..writeByte(8)
       ..write(obj.isActive)
       ..writeByte(9)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(10)
+      ..write(obj.lastFourDigits)
+      ..writeByte(11)
+      ..write(obj.minimumPayment);
   }
 
   @override

@@ -20,13 +20,18 @@ class AccountAdapter extends TypeAdapter<Account> {
       color: fields[5] as String?,
       isActive: fields[6] as bool,
       createdAt: fields[7] as DateTime,
+      // Missing on data saved before account type / IBAN / icon / KMH existed.
+      accountType: fields[8] == null ? 'vadesiz' : fields[8] as String,
+      iban: fields[9] as String?,
+      icon: fields[10] as String?,
+      overdraftLimit: fields[11] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Account obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -42,7 +47,15 @@ class AccountAdapter extends TypeAdapter<Account> {
       ..writeByte(6)
       ..write(obj.isActive)
       ..writeByte(7)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(8)
+      ..write(obj.accountType)
+      ..writeByte(9)
+      ..write(obj.iban)
+      ..writeByte(10)
+      ..write(obj.icon)
+      ..writeByte(11)
+      ..write(obj.overdraftLimit);
   }
 
   @override
