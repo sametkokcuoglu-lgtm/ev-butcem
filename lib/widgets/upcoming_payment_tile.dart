@@ -1,83 +1,127 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:iconsax/iconsax.dart';
+
+import '../models/scheduled_item.dart';
+import '../theme/app_theme.dart';
+import '../utils/format.dart';
 
 class UpcomingPaymentTile extends StatelessWidget {
-  final String title;
-  final double amount;
-  final DateTime date;
-  final String icon;
-
   const UpcomingPaymentTile({
     super.key,
-    required this.title,
-    required this.amount,
-    required this.date,
-    required this.icon,
+    required this.item,
+    required this.now,
+    this.onToggle,
+    this.onTap,
   });
+
+  final ScheduledItem item;
+  final DateTime now;
+  final VoidCallback? onToggle;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(
-      locale: 'tr_TR',
-      symbol: '₺',
-      decimalDigits: 0,
+    final overdue =
+        item.date.isBefore(DateTime(now.year, now.month, now.day)) &&
+            !item.isPaid;
+    final urgent =
+        !item.isPaid && !overdue && item.date.difference(now).inDays <= 3;
+    final accent = overdue || urgent ? AppTheme.expenseColor : Colors.grey;
+    final titleStyle = TextStyle(
+      fontWeight: FontWeight.w600,
+      fontSize: 15,
+      decoration: item.isPaid ? TextDecoration.lineThrough : null,
+      color: item.isPaid ? Colors.grey : null,
     );
-
-    final daysLeft = date.difference(DateTime.now()).inDays;
-    final isUrgent = daysLeft <= 3;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isUrgent
-              ? Colors.red.withOpacity(0.3)
-              : Colors.grey.withOpacity(0.12),
+          color: overdue
+              ? AppTheme.expenseColor.withValues(alpha: 0.35)
+              : Colors.grey.withValues(alpha: 0.12),
         ),
       ),
-      child: Row(
-        children: [
-          Text(icon, style: const TextStyle(fontSize: 24)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 10, 14, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (onToggle != null)
+                Checkbox(
+                  key: ValueKey('toggle-${item.id}'),
+                  value: item.isPaid,
+                  onChanged: (_) => onToggle!(),
+                  visualDensity: VisualDensity.compact,
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Icon(_iconFor(item.kind), size: 22, color: accent),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  daysLeft == 0
-                      ? 'Bugün'
-                      : daysLeft == 1
-                          ? 'Yarın'
-                          : '$daysLeft gün sonra',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isUrgent ? Colors.red : Colors.grey.shade600,
-                  ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.title, style: titleStyle),
+                    const SizedBox(height: 2),
+                    Text(
+                      _metaLine(),
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${formatTrDate(item.date)} · ${relativeDayLabel(item.date, now)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: overdue || urgent
+                            ? AppTheme.expenseColor
+                            : Colors.grey.shade600,
+                        fontWeight: overdue ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                formatTry(item.amount),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  decoration: item.isPaid ? TextDecoration.lineThrough : null,
+                  color: item.isPaid
+                      ? Colors.grey
+                      : (item.isIncome
+                          ? AppTheme.incomeColor
+                          : (overdue ? AppTheme.expenseColor : null)),
+                ),
+              ),
+            ],
           ),
-          Text(
-            currencyFormat.format(amount),
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-              color: isUrgent ? Colors.red : null,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
+
+  String _metaLine() {
+    final subtitle = item.subtitle;
+    if (subtitle == null || subtitle.isEmpty) return item.kindLabel;
+    return '${item.kindLabel} · $subtitle';
+  }
+
+  IconData _iconFor(FinanceKind kind) => switch (kind) {
+        FinanceKind.planned => Iconsax.receipt_item,
+        FinanceKind.creditCard => Iconsax.card,
+        FinanceKind.installment => Iconsax.calendar_1,
+        FinanceKind.income => Iconsax.arrow_down_1,
+        FinanceKind.expense => Iconsax.arrow_up_1,
+      };
 }
