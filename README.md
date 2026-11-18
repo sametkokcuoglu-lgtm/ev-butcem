@@ -48,9 +48,9 @@ lib/
 
 ## Sonraki Adımlar
 
-- [ ] Provider / Riverpod ile state management
-- [ ] Gerçek veri bağlama (Hive CRUD)
-- [ ] Gelir/Gider ekleme formu
+- [x] Riverpod ile state management (işlemler)
+- [x] Gerçek veri bağlama (Hive CRUD, işlemler)
+- [x] Gelir/Gider ekleme formu
 - [ ] Hesap ve kart ekleme formları
 - [ ] Taksit ekranı
 - [ ] Raporlar

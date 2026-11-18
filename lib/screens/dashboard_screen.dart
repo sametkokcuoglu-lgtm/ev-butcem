@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
+import '../providers/transaction_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/formatters.dart';
+import 'transactions_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = ref.watch(currentMonthSummaryProvider);
+    final difference = summary.difference;
     return Scaffold(
       appBar: AppBar(title: const Text('Ev Bütçem')),
       body: SingleChildScrollView(
@@ -14,13 +20,13 @@ class DashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Kasım 2026', style: TextStyle(fontSize: 16, color: Colors.grey)),
+            Text(AppFormatters.monthYear(DateTime.now()), style: const TextStyle(fontSize: 16, color: Colors.grey)),
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _SummaryCard(title: 'Gelir', amount: '42.500 ₺', color: AppTheme.incomeColor, icon: Iconsax.arrow_down_1)),
+                Expanded(child: _SummaryCard(title: 'Gelir', amount: AppFormatters.money(summary.income), color: AppTheme.incomeColor, icon: Iconsax.arrow_down_1)),
                 const SizedBox(width: 12),
-                Expanded(child: _SummaryCard(title: 'Gider', amount: '28.750 ₺', color: AppTheme.expenseColor, icon: Iconsax.arrow_up_1)),
+                Expanded(child: _SummaryCard(title: 'Gider', amount: AppFormatters.money(summary.expense), color: AppTheme.expenseColor, icon: Iconsax.arrow_up_1)),
               ],
             ),
             const SizedBox(height: 12),
@@ -28,15 +34,23 @@ class DashboardScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF16A34A), Color(0xFF15803D)]),
+                gradient: LinearGradient(
+                  colors: difference >= 0
+                      ? const [Color(0xFF16A34A), Color(0xFF15803D)]
+                      : const [Color(0xFFDC2626), Color(0xFFB91C1C)],
+                ),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Bu Ay Kalan', style: TextStyle(color: Colors.white70)),
-                  SizedBox(height: 4),
-                  Text('13.750 ₺', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                  const Text('Bu Ay Kalan', style: TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 4),
+                  Text(
+                    AppFormatters.money(difference),
+                    key: const Key('differenceText'),
+                    style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
             ),
@@ -48,9 +62,9 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 24),
             Row(
               children: [
-                Expanded(child: _QuickButton(label: 'Gelir Ekle', color: AppTheme.incomeColor)),
+                Expanded(child: _QuickButton(label: 'Gelir Ekle', color: AppTheme.incomeColor, onTap: () => openTransactionForm(context, isIncome: true))),
                 const SizedBox(width: 12),
-                Expanded(child: _QuickButton(label: 'Gider Ekle', color: AppTheme.expenseColor)),
+                Expanded(child: _QuickButton(label: 'Gider Ekle', color: AppTheme.expenseColor, onTap: () => openTransactionForm(context))),
               ],
             ),
           ],
@@ -106,14 +120,22 @@ class _PaymentTile extends StatelessWidget {
 class _QuickButton extends StatelessWidget {
   final String label;
   final Color color;
-  const _QuickButton({required this.label, required this.color});
+  final VoidCallback onTap;
+  const _QuickButton({required this.label, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
-      child: Center(child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600))),
+    return Material(
+      color: color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Center(child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600))),
+        ),
+      ),
     );
   }
 }
