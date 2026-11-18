@@ -7,6 +7,8 @@ import '../providers/transaction_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/amount_parser.dart';
 import '../utils/formatters.dart';
+import '../widgets/transaction_delete.dart';
+import 'categories_screen.dart';
 
 /// Gelir / Gider ekleme ve düzenleme formu.
 ///
@@ -34,6 +36,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   late DateTime _date;
   String? _categoryId;
   bool _saving = false;
+
+  /// Formdan yeni kategori eklenince dropdown'ı yeni seçimle yeniden kurmak için.
+  int _dropdownGeneration = 0;
 
   bool get _isEditing => widget.transaction != null;
 
@@ -96,7 +101,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       date: _date,
       note: note.isEmpty ? null : note,
       isIncome: _isIncome,
+      // Düzenlemede id ve createdAt korunur, updatedAt şimdiye çekilir.
       createdAt: old?.createdAt,
+      updatedAt: DateTime.now(),
     );
 
     final notifier = ref.read(transactionsProvider.notifier);
@@ -120,6 +127,26 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     }
   }
 
+  Future<void> _addCategory() async {
+    final created = await openCategoryForm(context, isIncome: _isIncome);
+    if (created == null || !mounted) return;
+    setState(() {
+      _isIncome = created.isIncome;
+      _categoryId = created.id;
+      _dropdownGeneration++;
+    });
+  }
+
+  Future<void> _delete() async {
+    final t = widget.transaction;
+    if (t == null || _saving) return;
+    final category = ref.read(categoryMapProvider)[t.categoryId];
+    if (!await confirmTransactionDelete(context, t, category)) return;
+    if (!mounted) return;
+    await deleteTransactionWithUndo(context, ref, t);
+    if (mounted) Navigator.of(context).pop(true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final categories = _categoriesFor(ref.watch(categoriesProvider));
@@ -132,6 +159,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'İşlemi Düzenle' : (_isIncome ? 'Gelir Ekle' : 'Gider Ekle')),
+        actions: [
+          if (_isEditing)
+            IconButton(
+              key: const Key('deleteTransactionButton'),
+              tooltip: 'İşlemi sil',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: _saving ? null : _delete,
+            ),
+        ],
       ),
       body: Form(
         key: _formKey,
@@ -176,7 +212,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               // Tür değişince alan yeniden kurulur; eski değer taşınmaz.
-              key: ValueKey('category-$_isIncome'),
+              key: ValueKey('category-$_isIncome-$_dropdownGeneration'),
               initialValue: selectedId,
               isExpanded: true,
               decoration: const InputDecoration(
@@ -194,7 +230,16 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               onChanged: (id) => setState(() => _categoryId = id),
               validator: (id) => id == null ? 'Kategori seçin' : null,
             ),
-            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                key: const Key('newCategoryButton'),
+                onPressed: _addCategory,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Yeni kategori'),
+              ),
+            ),
+            const SizedBox(height: 4),
             InkWell(
               onTap: _pickDate,
               borderRadius: BorderRadius.circular(4),

@@ -16,5 +16,9 @@ class TransactionRepository {
   Future<void> save(Transaction transaction) =>
       _box.put(transaction.id, transaction);
 
+  /// Birden fazla işlemi tek seferde yazar.
+  Future<void> saveAll(Iterable<Transaction> transactions) =>
+      _box.putAll({for (final t in transactions) t.id: t});
+
   Future<void> delete(String id) => _box.delete(id);
 }

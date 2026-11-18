@@ -1,55 +1,29 @@
-import 'dart:typed_data';
-
-import 'package:ev_butcem/models/category.dart';
 import 'package:ev_butcem/models/transaction.dart';
 import 'package:ev_butcem/providers/transaction_provider.dart';
 import 'package:ev_butcem/screens/add_transaction_screen.dart';
 import 'package:ev_butcem/screens/dashboard_screen.dart';
 import 'package:ev_butcem/screens/transactions_screen.dart';
-import 'package:ev_butcem/services/transaction_repository.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
-final _categories = [
-  Category(id: 'market', name: 'Market', icon: '🛒', colorValue: 0xFF4CAF50, isIncome: false),
-  Category(id: 'kira', name: 'Kira', icon: '🏠', colorValue: 0xFF3F51B5, isIncome: false),
-  Category(id: 'maas', name: 'Maaş', icon: '💰', colorValue: 0xFF4CAF50, isIncome: true),
-];
+import 'test_helpers.dart';
 
-late Box<Transaction> _box;
-
-Widget _app(Widget home) => ProviderScope(
-      overrides: [
-        transactionRepositoryProvider.overrideWithValue(TransactionRepository(_box)),
-        categoriesProvider.overrideWithValue(_categories),
-      ],
-      child: MaterialApp(
-        locale: const Locale('tr', 'TR'),
-        supportedLocales: const [Locale('tr', 'TR')],
-        localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: home,
-      ),
-    );
+late TestBoxes _boxes;
+Box<Transaction> get _box => _boxes.transactions;
+Widget _app(Widget home) => _boxes.app(home);
 
 void main() {
   setUpAll(() async {
     await initializeDateFormatting('tr_TR');
-    Hive.registerAdapter(TransactionAdapter());
+    registerTestAdapters();
   });
 
-  setUp(() async {
-    // Bellek içi Hive kutusu: diske yazmaz, testler birbirini etkilemez.
-    _box = await Hive.openBox<Transaction>(
-      'transactions_${DateTime.now().microsecondsSinceEpoch}',
-      bytes: Uint8List(0),
-    );
-  });
+  setUp(() async => _boxes = await TestBoxes.open());
 
-  tearDown(() async => _box.close());
+  tearDown(() async => _boxes.close());
 
   testWidgets('Gider kaydedilir, listelenir ve Hive kutusuna yazılır', (tester) async {
     await tester.pumpWidget(_app(const TransactionsScreen()));

@@ -72,4 +72,23 @@ class Transaction extends HiveObject {
       updatedAt: DateTime.now(),
     );
   }
+
+  /// Alanları birebir aynı, yeni bir nesne (geri alma için).
+  ///
+  /// Hive, aynı HiveObject örneğinin silindikten sonra yeniden kutuya
+  /// konmasında sorun çıkarabildiği için geri yüklemede kopya kullanılır.
+  Transaction clone() {
+    return Transaction(
+      id: id,
+      amount: amount,
+      categoryId: categoryId,
+      accountId: accountId,
+      creditCardId: creditCardId,
+      date: date,
+      note: note,
+      isIncome: isIncome,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 }

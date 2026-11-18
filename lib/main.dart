@@ -7,9 +7,9 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'models/category.dart';
 import 'models/transaction.dart';
 import 'screens/home_screen.dart';
+import 'services/category_repository.dart';
 import 'services/transaction_repository.dart';
 import 'theme/app_theme.dart';
-import 'utils/default_data.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,15 +19,11 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(CategoryAdapter());
   Hive.registerAdapter(TransactionAdapter());
-  await Hive.openBox<Category>('categories');
+  final categoryBox = await Hive.openBox<Category>(CategoryRepository.boxName);
   await Hive.openBox<Transaction>(TransactionRepository.boxName);
 
-  final categoryBox = Hive.box<Category>('categories');
-  if (categoryBox.isEmpty) {
-    for (final category in DefaultData.defaultCategories) {
-      await categoryBox.put(category.id, category);
-    }
-  }
+  // Yalnızca ilk açılışta varsayılan kategoriler (sabit id'lerle) eklenir.
+  await CategoryRepository(categoryBox).seedDefaultsIfEmpty();
 
   runApp(const ProviderScope(child: EvButcemApp()));
 }
