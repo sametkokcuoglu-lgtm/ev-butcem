@@ -1,25 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'models/category.dart';
+import 'models/transaction.dart';
 import 'screens/home_screen.dart';
+import 'services/category_repository.dart';
+import 'services/transaction_repository.dart';
 import 'theme/app_theme.dart';
-import 'utils/default_data.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await initializeDateFormatting('tr_TR');
+
   await Hive.initFlutter();
   Hive.registerAdapter(CategoryAdapter());
-  await Hive.openBox<Category>('categories');
+  Hive.registerAdapter(TransactionAdapter());
+  final categoryBox = await Hive.openBox<Category>(CategoryRepository.boxName);
+  await Hive.openBox<Transaction>(TransactionRepository.boxName);
 
-  final categoryBox = Hive.box<Category>('categories');
-  if (categoryBox.isEmpty) {
-    for (final category in DefaultData.defaultCategories) {
-      await categoryBox.put(category.id, category);
-    }
-  }
+  // Yalnızca ilk açılışta varsayılan kategoriler (sabit id'lerle) eklenir.
+  await CategoryRepository(categoryBox).seedDefaultsIfEmpty();
 
   runApp(const ProviderScope(child: EvButcemApp()));
 }
@@ -35,6 +39,9 @@ class EvButcemApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
+      locale: const Locale('tr', 'TR'),
+      supportedLocales: const [Locale('tr', 'TR')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: const HomeScreen(),
     );
   }

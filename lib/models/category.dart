@@ -26,4 +26,21 @@ class Category extends HiveObject {
     required this.isIncome,
     this.isSystem = false,
   }) : id = id ?? const Uuid().v4();
+
+  /// Düzenleme için kopya üretir; [id] ve [isSystem] korunur.
+  Category copyWith({
+    String? name,
+    String? icon,
+    int? colorValue,
+    bool? isIncome,
+  }) {
+    return Category(
+      id: id,
+      name: name ?? this.name,
+      icon: icon ?? this.icon,
+      colorValue: colorValue ?? this.colorValue,
+      isIncome: isIncome ?? this.isIncome,
+      isSystem: isSystem,
+    );
+  }
 }
