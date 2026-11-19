@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/category.dart';
 import '../models/transaction.dart';
 import '../providers/transaction_provider.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import '../utils/amount_parser.dart';
 import '../utils/formatters.dart';
+import '../widgets/app_card.dart';
+import '../widgets/content_frame.dart';
 import '../widgets/transaction_delete.dart';
 import 'categories_screen.dart';
 
@@ -24,8 +27,7 @@ class AddTransactionScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<AddTransactionScreen> createState() =>
-      _AddTransactionScreenState();
+  ConsumerState<AddTransactionScreen> createState() => _AddTransactionScreenState();
 }
 
 class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
@@ -152,11 +154,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final categories = _categoriesFor(ref.watch(categoriesProvider));
     // Dropdown'a verilen değer mutlaka listedeki öğelerden biri olmalı;
     // değilse (tür değişti, kategori silindi vb.) seçim boşaltılır.
-    final selectedId =
-        categories.any((c) => c.id == _categoryId) ? _categoryId : null;
-    final color = _isIncome ? AppTheme.incomeColor : AppTheme.expenseColor;
+    final selectedId = categories.any((c) => c.id == _categoryId) ? _categoryId : null;
+    final finance = FinanceColors.of(context);
+    final color = _isIncome ? finance.income : finance.expense;
+    final theme = Theme.of(context);
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(_isEditing ? 'İşlemi Düzenle' : (_isIncome ? 'Gelir Ekle' : 'Gider Ekle')),
         actions: [
@@ -164,117 +168,179 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             IconButton(
               key: const Key('deleteTransactionButton'),
               tooltip: 'İşlemi sil',
-              icon: const Icon(Icons.delete_outline),
+              icon: const Icon(Icons.delete_outline_rounded),
               onPressed: _saving ? null : _delete,
             ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+      body: ContentFrame(
+        child: Column(
           children: [
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: false, label: Text('Gider'), icon: Icon(Icons.arrow_upward)),
-                ButtonSegment(value: true, label: Text('Gelir'), icon: Icon(Icons.arrow_downward)),
-              ],
-              selected: {_isIncome},
-              onSelectionChanged: (s) => setState(() {
-                if (_isIncome != s.first) {
-                  _isIncome = s.first;
-                  _categoryId = null; // Eski türün kategorisi yeni listede yok.
-                }
-              }),
-            ),
-            const SizedBox(height: 20),
-            TextFormField(
-              key: const Key('amountField'),
-              controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              textInputAction: TextInputAction.next,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color),
-              decoration: const InputDecoration(
-                labelText: 'Tutar',
-                hintText: 'Örn. 1.250,50',
-                suffixText: '₺',
-                border: OutlineInputBorder(),
-              ),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Tutar girin';
-                final amount = AmountParser.parse(v);
-                if (amount == null) return 'Geçerli bir tutar girin (örn. 1.250,50)';
-                if (amount <= 0) return 'Tutar sıfırdan büyük olmalı';
-                if (amount > 1000000000) return 'Tutar çok büyük';
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              // Tür değişince alan yeniden kurulur; eski değer taşınmaz.
-              key: ValueKey('category-$_isIncome-$_dropdownGeneration'),
-              initialValue: selectedId,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Kategori',
-                border: OutlineInputBorder(),
-              ),
-              hint: Text(categories.isEmpty ? 'Kategori bulunamadı' : 'Kategori seçin'),
-              items: [
-                for (final c in categories)
-                  DropdownMenuItem<String>(
-                    value: c.id,
-                    child: Text('${c.icon}  ${c.name}'),
-                  ),
-              ],
-              onChanged: (id) => setState(() => _categoryId = id),
-              validator: (id) => id == null ? 'Kategori seçin' : null,
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                key: const Key('newCategoryButton'),
-                onPressed: _addCategory,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Yeni kategori'),
-              ),
-            ),
-            const SizedBox(height: 4),
-            InkWell(
-              onTap: _pickDate,
-              borderRadius: BorderRadius.circular(4),
-              child: InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: 'Tarih',
-                  border: OutlineInputBorder(),
-                  suffixIcon: Icon(Icons.calendar_today_outlined),
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.sm, AppSpacing.page, AppSpacing.lg),
+                  children: [
+                    SegmentedButton<bool>(
+                      expandedInsets: EdgeInsets.zero,
+                      showSelectedIcon: false,
+                      style: ButtonStyle(
+                        foregroundColor: WidgetStateProperty.resolveWith((states) {
+                          if (states.contains(WidgetState.selected)) return Colors.white;
+                          return theme.colorScheme.onSurfaceVariant;
+                        }),
+                        backgroundColor: WidgetStateProperty.resolveWith((states) {
+                          if (states.contains(WidgetState.selected)) return color;
+                          return theme.cardColor;
+                        }),
+                      ),
+                      segments: const [
+                        ButtonSegment(value: false, label: Text('Gider'), icon: Icon(Icons.north_rounded, size: 18)),
+                        ButtonSegment(value: true, label: Text('Gelir'), icon: Icon(Icons.south_rounded, size: 18)),
+                      ],
+                      selected: {_isIncome},
+                      onSelectionChanged: (s) => setState(() {
+                        if (_isIncome != s.first) {
+                          _isIncome = s.first;
+                          _categoryId = null; // Eski türün kategorisi yeni listede yok.
+                        }
+                      }),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppCard(
+                      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.sm),
+                      child: Column(
+                        children: [
+                          Text('Tutar', style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                          TextFormField(
+                            key: const Key('amountField'),
+                            controller: _amountController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            textInputAction: TextInputAction.next,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -1,
+                              color: color,
+                              height: 1.15,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: '0,00',
+                              hintStyle: TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -1,
+                                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
+                              ),
+                              suffixText: '₺',
+                              suffixStyle: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: color),
+                              filled: false,
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              errorBorder: InputBorder.none,
+                              focusedErrorBorder: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                            ),
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) return 'Tutar girin';
+                              final amount = AmountParser.parse(v);
+                              if (amount == null) return 'Geçerli bir tutar girin (örn. 1.250,50)';
+                              if (amount <= 0) return 'Tutar sıfırdan büyük olmalı';
+                              if (amount > 1000000000) return 'Tutar çok büyük';
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    DropdownButtonFormField<String>(
+                      // Tür değişince alan yeniden kurulur; eski değer taşınmaz.
+                      key: ValueKey('category-$_isIncome-$_dropdownGeneration'),
+                      initialValue: selectedId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Kategori',
+                        prefixIcon: Icon(Icons.category_outlined),
+                      ),
+                      hint: Text(categories.isEmpty ? 'Kategori bulunamadı' : 'Kategori seçin'),
+                      items: [
+                        for (final c in categories)
+                          DropdownMenuItem<String>(
+                            value: c.id,
+                            child: Text('${c.icon}  ${c.name}', overflow: TextOverflow.ellipsis),
+                          ),
+                      ],
+                      onChanged: (id) => setState(() => _categoryId = id),
+                      validator: (id) => id == null ? 'Kategori seçin' : null,
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        key: const Key('newCategoryButton'),
+                        onPressed: _addCategory,
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Yeni kategori'),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: _pickDate,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Tarih',
+                          prefixIcon: Icon(Icons.calendar_month_outlined),
+                          suffixIcon: Icon(Icons.south_rounded, size: 18),
+                        ),
+                        child: Text(AppFormatters.date(_date)),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TextFormField(
+                      key: const Key('noteField'),
+                      controller: _noteController,
+                      maxLength: 200,
+                      maxLines: 3,
+                      minLines: 2,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: const InputDecoration(
+                        labelText: 'Açıklama (isteğe bağlı)',
+                        alignLabelWithHint: true,
+                        prefixIcon: Padding(
+                          padding: EdgeInsets.only(bottom: 28),
+                          child: Icon(Icons.sticky_note_2_outlined),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                child: Text(AppFormatters.date(_date)),
               ),
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              key: const Key('noteField'),
-              controller: _noteController,
-              maxLength: 200,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Açıklama (isteğe bağlı)',
-                border: OutlineInputBorder(),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.sm, AppSpacing.page, AppSpacing.md),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: const Key('saveButton'),
+                    onPressed: _saving ? null : _save,
+                    style: FilledButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white),
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.check_circle_outline),
+                    label: Text(_isEditing ? 'Güncelle' : 'Kaydet'),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              key: const Key('saveButton'),
-              onPressed: _saving ? null : _save,
-              style: FilledButton.styleFrom(
-                backgroundColor: color,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              icon: _saving
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.check),
-              label: Text(_isEditing ? 'Güncelle' : 'Kaydet'),
             ),
           ],
         ),

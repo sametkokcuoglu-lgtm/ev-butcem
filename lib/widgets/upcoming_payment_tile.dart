@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+
+import '../theme/app_spacing.dart';
+import '../theme/app_theme.dart';
+import '../utils/date_groups.dart';
+import '../utils/formatters.dart';
+import 'app_card.dart';
+import 'category_avatar.dart';
 
 class UpcomingPaymentTile extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final double amount;
   final DateTime date;
   final String icon;
+  final VoidCallback? onTap;
 
   const UpcomingPaymentTile({
     super.key,
@@ -13,67 +21,57 @@ class UpcomingPaymentTile extends StatelessWidget {
     required this.amount,
     required this.date,
     required this.icon,
+    this.subtitle,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(
-      locale: 'tr_TR',
-      symbol: '₺',
-      decimalDigits: 0,
-    );
+    final theme = Theme.of(context);
+    final finance = FinanceColors.of(context);
+    final today = DateUtils.dateOnly(DateTime.now());
+    final days = DateUtils.dateOnly(date).difference(today).inDays;
+    final urgent = days <= 3;
+    final accent = urgent ? finance.warning : theme.colorScheme.primary;
 
-    final daysLeft = date.difference(DateTime.now()).inDays;
-    final isUrgent = daysLeft <= 3;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+    return AppCard(
+      onTap: onTap,
+      margin: const EdgeInsets.only(bottom: AppSpacing.item),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isUrgent
-              ? Colors.red.withOpacity(0.3)
-              : Colors.grey.withOpacity(0.12),
-        ),
-      ),
+      radius: AppSpacing.radiusMd,
+      border: urgent ? Border.all(color: finance.warning.withValues(alpha: 0.45)) : null,
       child: Row(
         children: [
-          Text(icon, style: const TextStyle(fontSize: 24)),
-          const SizedBox(width: 12),
+          CategoryAvatar(icon: icon, colorValue: accent.toARGB32(), size: 42),
+          const SizedBox(width: AppSpacing.sm + AppSpacing.xs),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall),
                 const SizedBox(height: 2),
                 Text(
-                  daysLeft == 0
-                      ? 'Bugün'
-                      : daysLeft == 1
-                          ? 'Yarın'
-                          : '$daysLeft gün sonra',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isUrgent ? Colors.red : Colors.grey.shade600,
+                  subtitle == null ? DateGroups.due(date) : '${DateGroups.due(date)} · $subtitle',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: urgent ? finance.warning : theme.colorScheme.onSurfaceVariant,
+                    fontWeight: urgent ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
-          Text(
-            currencyFormat.format(amount),
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-              color: isUrgent ? Colors.red : null,
+          const SizedBox(width: AppSpacing.sm),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 128),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                AppFormatters.money(amount),
+                style: theme.textTheme.titleSmall?.copyWith(color: urgent ? finance.warning : null),
+              ),
             ),
           ),
         ],

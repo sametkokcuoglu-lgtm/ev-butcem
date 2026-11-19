@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax/iconsax.dart';
 
 import '../models/category.dart';
 import '../models/transaction.dart';
 import '../providers/transaction_provider.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
+import '../utils/date_groups.dart';
 import '../utils/formatters.dart';
+import '../widgets/app_card.dart';
+import '../widgets/category_avatar.dart';
+import '../widgets/content_frame.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/transaction_delete.dart';
 import 'add_transaction_screen.dart';
 
@@ -52,6 +57,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final all = ref.watch(transactionsProvider);
     final categories = ref.watch(categoryMapProvider);
     final transactions = all.where(_matches).toList();
+    final theme = Theme.of(context);
+    final finance = FinanceColors.of(context);
 
     var income = 0.0;
     var expense = 0.0;
@@ -63,82 +70,135 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       }
     }
 
+    final rows = <Object>[];
+    String? lastLabel;
+    for (final t in transactions) {
+      final label = DateGroups.label(t.date);
+      if (label != lastLabel) {
+        rows.add(label);
+        lastLabel = label;
+      }
+      rows.add(t);
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('İşlemler')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: SegmentedButton<TransactionTypeFilter>(
-              key: const Key('typeFilter'),
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: TransactionTypeFilter.all, label: Text('Tümü')),
-                ButtonSegment(value: TransactionTypeFilter.income, label: Text('Gelir')),
-                ButtonSegment(value: TransactionTypeFilter.expense, label: Text('Gider')),
-              ],
-              selected: {_type},
-              onSelectionChanged: (s) => setState(() => _type = s.first),
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                key: const Key('prevMonthButton'),
-                tooltip: 'Önceki ay',
-                icon: const Icon(Icons.chevron_left),
-                onPressed: () => _shiftMonth(-1),
-              ),
-              TextButton(
-                key: const Key('monthFilterButton'),
-                onPressed: () => setState(() {
-                  final now = DateTime.now();
-                  _month = _month == null ? DateTime(now.year, now.month) : null;
-                }),
-                child: Text(_month == null ? 'Tüm aylar' : AppFormatters.monthYear(_month!)),
-              ),
-              IconButton(
-                key: const Key('nextMonthButton'),
-                tooltip: 'Sonraki ay',
-                icon: const Icon(Icons.chevron_right),
-                onPressed: () => _shiftMonth(1),
-              ),
-            ],
-          ),
-          if (transactions.isNotEmpty)
+      body: ContentFrame(
+        child: Column(
+          children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-              child: Text(
-                '${transactions.length} işlem · Gelir ${AppFormatters.money(income)} · '
-                'Gider ${AppFormatters.money(expense)}',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.sm, AppSpacing.page, 0),
+              child: SegmentedButton<TransactionTypeFilter>(
+                key: const Key('typeFilter'),
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: TransactionTypeFilter.all, label: Text('Tümü')),
+                  ButtonSegment(value: TransactionTypeFilter.income, label: Text('Gelir')),
+                  ButtonSegment(value: TransactionTypeFilter.expense, label: Text('Gider')),
+                ],
+                selected: {_type},
+                onSelectionChanged: (s) => setState(() => _type = s.first),
               ),
             ),
-          Expanded(
-            child: all.isEmpty
-                ? const Center(child: Text('Henüz işlem yok'))
-                : transactions.isEmpty
-                    ? const Center(child: Text('Bu filtreye uygun işlem yok'))
-                    : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                        itemCount: transactions.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (context, i) => _TransactionTile(
-                          key: ValueKey(transactions[i].id),
-                          transaction: transactions[i],
-                          category: categories[transactions[i].categoryId],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.sm, AppSpacing.page, 0),
+              child: AppCard(
+                radius: AppSpacing.radiusMd,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                child: Row(
+                  children: [
+                    IconButton(
+                      key: const Key('prevMonthButton'),
+                      tooltip: 'Önceki ay',
+                      icon: const Icon(Icons.chevron_left_rounded),
+                      onPressed: () => _shiftMonth(-1),
+                    ),
+                    Expanded(
+                      child: TextButton(
+                        key: const Key('monthFilterButton'),
+                        onPressed: () => setState(() {
+                          final now = DateTime.now();
+                          _month = _month == null ? DateTime(now.year, now.month) : null;
+                        }),
+                        child: Text(
+                          _month == null ? 'Tüm aylar' : AppFormatters.monthYear(_month!),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-          ),
-        ],
+                    ),
+                    IconButton(
+                      key: const Key('nextMonthButton'),
+                      tooltip: 'Sonraki ay',
+                      icon: const Icon(Icons.chevron_right_rounded),
+                      onPressed: () => _shiftMonth(1),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (transactions.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.sm, AppSpacing.page, AppSpacing.xs),
+                child: Text(
+                  '${transactions.length} işlem · Gelir ${AppFormatters.money(income)} · '
+                  'Gider ${AppFormatters.money(expense)}',
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ),
+            Expanded(
+              child: all.isEmpty
+                  ? const Center(
+                      child: EmptyState(
+                        icon: Icons.receipt_long_rounded,
+                        title: 'Henüz işlem yok',
+                        message: 'İlk gelir veya giderini eklediğinde liste burada oluşacak.',
+                      ),
+                    )
+                  : transactions.isEmpty
+                      ? const Center(
+                          child: EmptyState(
+                            icon: Icons.filter_alt_outlined,
+                            title: 'Bu filtreye uygun işlem yok',
+                            message: 'Tür veya ay filtresini değiştirip yeniden bakabilirsin.',
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.sm, AppSpacing.page, 96),
+                          itemCount: rows.length,
+                          itemBuilder: (context, i) {
+                            final row = rows[i];
+                            if (row is String) {
+                              return Padding(
+                                padding: EdgeInsets.only(top: i == 0 ? 0 : AppSpacing.sm, bottom: AppSpacing.sm),
+                                child: Text(
+                                  row,
+                                  style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                                ),
+                              );
+                            }
+                            final transaction = row as Transaction;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: AppSpacing.item),
+                              child: _TransactionTile(
+                                key: ValueKey(transaction.id),
+                                transaction: transaction,
+                                category: categories[transaction.categoryId],
+                                finance: finance,
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => openTransactionForm(
           context,
           isIncome: _type == TransactionTypeFilter.income,
         ),
-        icon: const Icon(Iconsax.add),
+        icon: const Icon(Icons.add_rounded),
         label: const Text('Yeni İşlem'),
       ),
     );
@@ -164,8 +224,14 @@ Future<void> openTransactionForm(
 class _TransactionTile extends ConsumerWidget {
   final Transaction transaction;
   final Category? category;
+  final FinanceColors finance;
 
-  const _TransactionTile({super.key, required this.transaction, required this.category});
+  const _TransactionTile({
+    super.key,
+    required this.transaction,
+    required this.category,
+    required this.finance,
+  });
 
   Future<void> _handle(BuildContext context, WidgetRef ref, _TransactionAction? action) async {
     switch (action) {
@@ -186,8 +252,8 @@ class _TransactionTile extends ConsumerWidget {
       context: context,
       position: RelativeRect.fromRect(position & const Size(1, 1), Offset.zero & overlay.size),
       items: const [
-        PopupMenuItem(value: _TransactionAction.edit, child: ListTile(leading: Icon(Iconsax.edit), title: Text('Düzenle'))),
-        PopupMenuItem(value: _TransactionAction.delete, child: ListTile(leading: Icon(Iconsax.trash), title: Text('Sil'))),
+        PopupMenuItem(value: _TransactionAction.edit, child: ListTile(leading: Icon(Icons.edit_outlined), title: Text('Düzenle'))),
+        PopupMenuItem(value: _TransactionAction.delete, child: ListTile(leading: Icon(Icons.delete_outline_rounded), title: Text('Sil'))),
       ],
     );
     if (context.mounted) await _handle(context, ref, action);
@@ -196,18 +262,19 @@ class _TransactionTile extends ConsumerWidget {
   Future<void> _showBottomSheet(BuildContext context, WidgetRef ref) async {
     final action = await showModalBottomSheet<_TransactionAction>(
       context: context,
+      showDragHandle: true,
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Iconsax.edit),
+              leading: const Icon(Icons.edit_outlined),
               title: const Text('Düzenle'),
               onTap: () => Navigator.pop(ctx, _TransactionAction.edit),
             ),
             ListTile(
-              leading: const Icon(Iconsax.trash, color: AppTheme.expenseColor),
-              title: const Text('Sil', style: TextStyle(color: AppTheme.expenseColor)),
+              leading: Icon(Icons.delete_outline_rounded, color: finance.expense),
+              title: Text('Sil', style: TextStyle(color: finance.expense)),
               onTap: () => Navigator.pop(ctx, _TransactionAction.delete),
             ),
           ],
@@ -220,7 +287,9 @@ class _TransactionTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = transaction;
-    final color = t.isIncome ? AppTheme.incomeColor : AppTheme.expenseColor;
+    final theme = Theme.of(context);
+    final color = t.isIncome ? finance.income : finance.expense;
+    final amount = '${t.isIncome ? '+' : '-'}${AppFormatters.money(t.amount)}';
     final subtitle = [
       AppFormatters.date(t.date),
       if (t.note != null && t.note!.isNotEmpty) t.note!,
@@ -236,37 +305,43 @@ class _TransactionTile extends ConsumerWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         decoration: BoxDecoration(
-          color: AppTheme.expenseColor,
-          borderRadius: BorderRadius.circular(14),
+          color: finance.expense,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Sil', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            Text('Sil', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
             SizedBox(width: 8),
-            Icon(Iconsax.trash, color: Colors.white),
+            Icon(Icons.delete_outline_rounded, color: Colors.white),
           ],
         ),
       ),
       child: GestureDetector(
         // Masaüstü / web: sağ tıkla Düzenle / Sil
         onSecondaryTapDown: (d) => _showContextMenu(context, ref, d.globalPosition),
-        child: Material(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(14),
+        child: AppCard(
+          radius: AppSpacing.radiusMd,
+          padding: EdgeInsets.zero,
           child: ListTile(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
             onTap: () => openTransactionForm(context, transaction: t),
             onLongPress: () => _showBottomSheet(context, ref),
-            leading: CircleAvatar(
-              backgroundColor: Color(category?.colorValue ?? Colors.grey.toARGB32()).withValues(alpha: 0.15),
-              child: Text(category?.icon ?? '❔', style: const TextStyle(fontSize: 20)),
+            leading: CategoryAvatar(icon: category?.icon ?? '❔', colorValue: category?.colorValue, size: 42),
+            title: Text(
+              category?.name ?? 'Kategorisiz',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleSmall,
             ),
-            title: Text(category?.name ?? 'Kategorisiz', style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-            trailing: Text(
-              '${t.isIncome ? '+' : '-'}${AppFormatters.money(t.amount)}',
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            trailing: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(amount, style: theme.textTheme.titleSmall?.copyWith(color: color)),
+              ),
             ),
           ),
         ),

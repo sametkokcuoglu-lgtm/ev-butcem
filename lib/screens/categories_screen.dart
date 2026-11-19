@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax/iconsax.dart';
 
 import '../models/category.dart';
 import '../providers/transaction_provider.dart';
 import '../services/category_repository.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_card.dart';
+import '../widgets/category_avatar.dart';
+import '../widgets/content_frame.dart';
 import 'category_form_screen.dart';
 
 enum _CategoryAction { edit, delete }
@@ -54,7 +57,7 @@ class CategoriesScreen extends ConsumerWidget {
               context,
               isIncome: DefaultTabController.of(context).index == 1,
             ),
-            icon: const Icon(Iconsax.add),
+            icon: const Icon(Icons.add_rounded),
             label: const Text('Yeni Kategori'),
           ),
         ),
@@ -79,14 +82,16 @@ class _CategoryList extends ConsumerWidget {
     if (categories.isEmpty) {
       return Center(child: Text('Henüz ${isIncome ? 'gelir' : 'gider'} kategorisi yok'));
     }
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-      itemCount: categories.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, i) => _CategoryTile(
-        key: ValueKey(categories[i].id),
-        category: categories[i],
-        usageCount: usage[categories[i].id] ?? 0,
+    return ContentFrame(
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.sm, AppSpacing.page, 96),
+        itemCount: categories.length,
+        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.item),
+        itemBuilder: (context, i) => _CategoryTile(
+          key: ValueKey(categories[i].id),
+          category: categories[i],
+          usageCount: usage[categories[i].id] ?? 0,
+        ),
       ),
     );
   }
@@ -115,8 +120,8 @@ class _CategoryTile extends ConsumerWidget {
       context: context,
       position: RelativeRect.fromRect(position & const Size(1, 1), Offset.zero & overlay.size),
       items: const [
-        PopupMenuItem(value: _CategoryAction.edit, child: ListTile(leading: Icon(Iconsax.edit), title: Text('Düzenle'))),
-        PopupMenuItem(value: _CategoryAction.delete, child: ListTile(leading: Icon(Iconsax.trash), title: Text('Sil'))),
+        PopupMenuItem(value: _CategoryAction.edit, child: ListTile(leading: Icon(Icons.edit_outlined), title: Text('Düzenle'))),
+        PopupMenuItem(value: _CategoryAction.delete, child: ListTile(leading: Icon(Icons.delete_outline_rounded), title: Text('Sil'))),
       ],
     );
     if (context.mounted) await _handle(context, ref, action);
@@ -132,16 +137,13 @@ class _CategoryTile extends ConsumerWidget {
 
     return GestureDetector(
       onSecondaryTapDown: (d) => _showContextMenu(context, ref, d.globalPosition),
-      child: Material(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(14),
+      child: AppCard(
+        padding: EdgeInsets.zero,
+        radius: AppSpacing.radiusMd,
         child: ListTile(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
           onTap: () => openCategoryForm(context, category: c),
-          leading: CircleAvatar(
-            backgroundColor: Color(c.colorValue).withValues(alpha: 0.15),
-            child: Text(c.icon, style: const TextStyle(fontSize: 20)),
-          ),
+          leading: CategoryAvatar(icon: c.icon, colorValue: c.colorValue, size: 42),
           title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Text(subtitle),
           trailing: PopupMenuButton<_CategoryAction>(
