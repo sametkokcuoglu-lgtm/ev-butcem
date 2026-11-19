@@ -1,4 +1,5 @@
 import 'package:ev_butcem/main.dart';
+import 'package:ev_butcem/models/budget_limit.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:ev_butcem/models/category.dart';
 import 'package:ev_butcem/models/transaction.dart';
@@ -27,6 +28,15 @@ class _SeedTransactions extends TransactionsNotifier {
   List<Transaction> build() => items;
 }
 
+class _SeedLimits extends BudgetLimitsNotifier {
+  _SeedLimits(this.items);
+
+  final List<BudgetLimit> items;
+
+  @override
+  List<BudgetLimit> build() => items;
+}
+
 void main() {
   setUpAll(() {
     GoogleFonts.config.allowRuntimeFetching = false;
@@ -40,6 +50,7 @@ void main() {
   Widget buildApp({
     List<Category> categories = const [],
     List<Transaction> transactions = const [],
+    List<BudgetLimit> limits = const [],
   }) {
     return ProviderScope(
       overrides: [
@@ -47,6 +58,7 @@ void main() {
         transactionsProvider.overrideWith(
           () => _SeedTransactions(transactions),
         ),
+        budgetLimitsProvider.overrideWith(() => _SeedLimits(limits)),
       ],
       child: const EvButcemApp(),
     );
@@ -123,7 +135,7 @@ void main() {
     expect(find.text(formatTry(200)), findsWidgets);
     expect(find.text(formatTry(1234.56)), findsWidgets);
     expect(find.text('Kategori dağılımı'), findsOneWidget);
-    expect(find.text('Faturalar'), findsOneWidget);
+    expect(find.text('Faturalar'), findsWidgets);
     expect(find.text('%100'), findsOneWidget);
     expect(find.byType(PieChart), findsOneWidget);
 
@@ -183,5 +195,51 @@ void main() {
         .decoration! as BoxDecoration;
     final netGradient = netDecoration.gradient! as LinearGradient;
     expect(netGradient.colors.first, const Color(0xFF16A34A));
+  });
+
+  testWidgets('reports screen shows an exceeded category limit',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final now = DateTime.now();
+    final market = Category(
+      id: 'market',
+      name: 'Market',
+      icon: '🛒',
+      colorValue: 0xFF16A34A,
+      isIncome: false,
+    );
+
+    await tester.pumpWidget(
+      buildApp(
+        categories: [market],
+        transactions: [
+          Transaction(
+            amount: 1500,
+            categoryId: market.id,
+            date: DateTime(now.year, now.month, 5),
+            isIncome: false,
+          ),
+        ],
+        limits: [
+          BudgetLimit(id: 'limit-market', categoryId: market.id, amount: 1000),
+        ],
+      ),
+    );
+    await settle(tester);
+    await tester.tap(find.text('Diğer'));
+    await settle(tester);
+    await tester.tap(find.widgetWithText(ListTile, 'Raporlar'));
+    await settle(tester);
+
+    await tester.scrollUntilVisible(
+      find.text('Limit aşıldı'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Limit aşıldı'), findsOneWidget);
+    expect(
+        find.text('${formatTry(1500)} / ${formatTry(1000)}'), findsOneWidget);
   });
 }

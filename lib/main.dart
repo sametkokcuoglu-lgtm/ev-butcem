@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'models/budget_limit.dart';
 import 'models/category.dart';
 import 'models/transaction.dart';
 import 'screens/home_screen.dart';
@@ -15,8 +16,10 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(CategoryAdapter());
   Hive.registerAdapter(TransactionAdapter());
+  Hive.registerAdapter(BudgetLimitAdapter());
   await Hive.openBox<Category>('categories');
   await Hive.openBox<Transaction>('transactions');
+  await Hive.openBox<BudgetLimit>('budget_limits');
 
   final categoryBox = Hive.box<Category>('categories');
   if (categoryBox.isEmpty) {
