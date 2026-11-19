@@ -7,6 +7,7 @@ import '../providers/budget_providers.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import '../utils/report_aggregator.dart';
+import '../widgets/budget_limits_section.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -105,6 +106,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 ? _EmptyDistribution(isIncome: _showIncome)
                 : _DistributionChart(shares: shares, isIncome: _showIncome),
           ),
+          const SizedBox(height: 24),
+          BudgetLimitsSection(month: _month),
           const SizedBox(height: 24),
           const _SectionTitle('Son 6 ay'),
           const SizedBox(height: 8),

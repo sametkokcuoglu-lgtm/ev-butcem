@@ -5,6 +5,8 @@ import 'package:iconsax/iconsax.dart';
 import '../models/category.dart';
 import '../models/transaction.dart';
 import '../providers/budget_providers.dart';
+import '../theme/app_theme.dart';
+import '../utils/budget_progress.dart';
 import '../utils/format.dart';
 
 Future<void> showAddTransactionSheet(BuildContext context) {
@@ -88,21 +90,37 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final note = _noteController.text.trim();
+    final saved = Transaction(
+      amount: amount,
+      categoryId: categoryId,
+      date: _date,
+      note: note.isEmpty ? null : note,
+      isIncome: _isIncome,
+    );
     try {
-      await ref.read(transactionsProvider.notifier).add(
-            Transaction(
-              amount: amount,
-              categoryId: categoryId,
-              date: _date,
-              note: note.isEmpty ? null : note,
-              isIncome: _isIncome,
-            ),
-          );
+      await ref.read(transactionsProvider.notifier).add(saved);
       if (!mounted) return;
-      navigator.pop();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('İşlem kaydedildi')),
+      final alert = budgetAlertForTransaction(
+        transaction: saved,
+        transactions: ref.read(transactionsProvider),
+        limits: ref.read(budgetLimitsProvider),
+        categories: ref.read(categoriesProvider),
       );
+      navigator.pop();
+      if (alert == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('İşlem kaydedildi')),
+        );
+      } else {
+        final exceeded = alert.startsWith('Limit aşıldı');
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(alert),
+            backgroundColor:
+                exceeded ? AppTheme.expenseColor : AppTheme.warningColor,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
