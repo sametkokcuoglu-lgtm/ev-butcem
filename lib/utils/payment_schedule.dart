@@ -1,4 +1,5 @@
 import '../models/account.dart';
+import '../models/bill.dart';
 import '../models/category.dart';
 import '../models/credit_card.dart';
 import '../models/installment.dart';
@@ -56,13 +57,27 @@ List<DateTime> upcomingPlannedDates(
   DateTime now, {
   int horizonDays = upcomingHorizonDays,
 }) {
+  return upcomingDueDates(
+    dueDate: payment.dueDate,
+    recurrence: payment.recurrence,
+    now: now,
+    horizonDays: horizonDays,
+  );
+}
+
+List<DateTime> upcomingDueDates({
+  required DateTime dueDate,
+  required PaymentRecurrence recurrence,
+  required DateTime now,
+  int horizonDays = upcomingHorizonDays,
+}) {
   final today = dateOnly(now);
   final horizon = today.add(Duration(days: horizonDays));
-  final anchor = dateOnly(payment.dueDate);
+  final anchor = dateOnly(dueDate);
   final dates = <DateTime>[];
   if (!anchor.isAfter(horizon)) dates.add(anchor);
 
-  final step = monthStepFor(payment.recurrence);
+  final step = monthStepFor(recurrence);
   if (step == 0) return dates;
 
   var index = 1;
@@ -131,6 +146,7 @@ List<PaymentSection> buildUpcomingSections({
   required List<PlannedPayment> planned,
   required List<CreditCard> cards,
   required List<Installment> installments,
+  List<Bill> bills = const [],
   List<Account> accounts = const [],
   List<Category> categories = const [],
   int horizonDays = upcomingHorizonDays,
@@ -138,6 +154,7 @@ List<PaymentSection> buildUpcomingSections({
   final names =
       _NameLookup(accounts: accounts, categories: categories, cards: cards);
   final items = <ScheduledItem>[
+    for (final bill in bills) ..._billUpcoming(bill, now, names, horizonDays),
     for (final payment in planned)
       ..._plannedUpcoming(payment, now, names, horizonDays),
     for (final card in cards) ..._cardUpcoming(card, now),
@@ -158,6 +175,7 @@ MonthFinance buildMonthFinance({
   required List<PlannedPayment> planned,
   required List<CreditCard> cards,
   required List<Installment> installments,
+  List<Bill> bills = const [],
   List<Account> accounts = const [],
   List<Category> categories = const [],
   List<Transaction> transactions = const [],
@@ -167,6 +185,7 @@ MonthFinance buildMonthFinance({
   final start = DateTime(month.year, month.month, 1);
   final end = DateTime(month.year, month.month + 1, 0);
   final entries = <ScheduledItem>[
+    for (final bill in bills) ..._billInRange(bill, start, end, names),
     for (final payment in planned)
       ..._plannedInRange(payment, start, end, names),
     for (final card in cards) ..._cardInMonth(card, month, today),
@@ -217,6 +236,61 @@ List<ScheduledItem> installmentOccurrences(Installment installment,
         ),
       ),
   ];
+}
+
+List<ScheduledItem> _billUpcoming(
+  Bill bill,
+  DateTime now,
+  _NameLookup names,
+  int horizonDays,
+) {
+  return [
+    for (final date in upcomingDueDates(
+      dueDate: bill.dueDate,
+      recurrence: bill.recurrence,
+      now: now,
+      horizonDays: horizonDays,
+    ))
+      _billItem(bill, date, names),
+  ];
+}
+
+List<ScheduledItem> _billInRange(
+  Bill bill,
+  DateTime start,
+  DateTime end,
+  _NameLookup names,
+) {
+  return [
+    for (final date in occurrenceDates(
+      anchor: bill.dueDate,
+      monthStep: monthStepFor(bill.recurrence),
+      start: start,
+      end: end,
+    ))
+      _billItem(bill, date, names),
+  ];
+}
+
+ScheduledItem _billItem(Bill bill, DateTime date, _NameLookup names) {
+  final anchor = dateOnly(bill.dueDate);
+  final day = dateOnly(date);
+  return ScheduledItem(
+    id: 'bill:${bill.id}:${_dateKey(day)}',
+    sourceId: bill.id,
+    kind: FinanceKind.bill,
+    title: bill.title,
+    amount: bill.amount,
+    date: day,
+    isPaid: bill.isPaid && isSameDay(day, anchor),
+    canTogglePaid: isSameDay(day, anchor),
+    recurrence: bill.recurrence,
+    subtitle: _joinParts([
+      if (bill.recurrence != PaymentRecurrence.none) bill.recurrence.label,
+      names.category(bill.categoryId),
+      bill.note,
+    ]),
+  );
 }
 
 List<ScheduledItem> _plannedUpcoming(
@@ -295,7 +369,7 @@ List<ScheduledItem> _cardInMonth(
       title: card.name,
       amount: card.currentDebt,
       date: date,
-      subtitle: _joinParts([card.bankName, 'Son ödeme günü']),
+      subtitle: card.bankName,
     ),
   ];
 }

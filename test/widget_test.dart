@@ -1,4 +1,6 @@
 import 'package:ev_butcem/data/payment_stores.dart';
+import 'package:ev_butcem/models/bill.dart';
+import 'package:ev_butcem/models/credit_card.dart';
 import 'package:ev_butcem/models/planned_payment.dart';
 import 'package:ev_butcem/providers/finance_providers.dart';
 import 'package:ev_butcem/screens/dashboard_screen.dart';
@@ -130,6 +132,51 @@ void main() {
         store.load().singleWhere((item) => item.id == 'rent').isPaid, isTrue);
 
     await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('genel bakış kayıtlı fatura ve kart borcunu gösterir',
+      (tester) async {
+    final bills = MemoryBillStore([
+      Bill(
+        id: 'electric',
+        title: 'Elektrik',
+        amount: 875,
+        dueDate: DateTime(2026, 11, 20),
+      ),
+    ]);
+    final cards = MemoryCreditCardStore([
+      CreditCard(
+        id: 'card',
+        name: 'Platinum',
+        bankName: 'Ziraat',
+        limit: 20000,
+        currentDebt: 4250,
+        statementDay: 1,
+        dueDay: 18,
+      ),
+      CreditCard(
+        id: 'empty',
+        name: 'Boş Kart',
+        bankName: 'Garanti',
+        limit: 5000,
+        currentDebt: 0,
+        statementDay: 5,
+        dueDay: 15,
+      ),
+    ]);
+
+    await pump(
+      tester,
+      const DashboardScreen(),
+      overrides: [
+        billStoreProvider.overrideWith((ref) => bills),
+        creditCardStoreProvider.overrideWith((ref) => cards),
+      ],
+    );
+
+    expect(find.text('Elektrik'), findsOneWidget);
+    expect(find.text('Platinum'), findsOneWidget);
+    expect(find.text('Boş Kart'), findsNothing);
   });
 
   testWidgets('diğer menü takvime ve ödeme listesine gider', (tester) async {

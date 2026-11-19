@@ -119,6 +119,7 @@ class UpcomingPaymentTile extends StatelessWidget {
 
   IconData _iconFor(FinanceKind kind) => switch (kind) {
         FinanceKind.planned => Iconsax.receipt_item,
+        FinanceKind.bill => Iconsax.bill,
         FinanceKind.creditCard => Iconsax.card,
         FinanceKind.installment => Iconsax.calendar_1,
         FinanceKind.income => Iconsax.arrow_down_1,

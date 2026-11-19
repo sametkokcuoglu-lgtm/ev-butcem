@@ -31,8 +31,10 @@ class _HomeScreenState extends State<HomeScreen> {
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: const [
           NavigationDestination(icon: Icon(Iconsax.home), label: 'Genel Bakış'),
-          NavigationDestination(icon: Icon(Iconsax.receipt_item), label: 'İşlemler'),
-          NavigationDestination(icon: Icon(Iconsax.wallet_2), label: 'Hesaplar'),
+          NavigationDestination(
+              icon: Icon(Iconsax.receipt_item), label: 'İşlemler'),
+          NavigationDestination(
+              icon: Icon(Iconsax.wallet_2), label: 'Hesaplar'),
           NavigationDestination(icon: Icon(Iconsax.more), label: 'Diğer'),
         ],
       ),

@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../models/bill.dart';
+import '../models/credit_card.dart';
 import '../models/planned_payment.dart';
 import '../models/scheduled_item.dart';
 import '../providers/finance_providers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/upcoming_payment_tile.dart';
+import 'bill_form_screen.dart';
+import 'card_form_screen.dart';
 import 'payment_form_screen.dart';
 
 class UpcomingPaymentsScreen extends ConsumerWidget {
@@ -22,7 +26,7 @@ class UpcomingPaymentsScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openForm(context),
         icon: const Icon(Iconsax.add),
-        label: const Text('Ödeme Ekle'),
+        label: const Text('Fatura Ekle'),
       ),
       body: sections.isEmpty
           ? const _EmptyPayments()
@@ -38,9 +42,7 @@ class UpcomingPaymentsScreen extends ConsumerWidget {
                       onToggle: item.canTogglePaid
                           ? () => _toggle(context, ref, item)
                           : null,
-                      onTap: item.kind == FinanceKind.planned
-                          ? () => _editPlanned(context, ref, item)
-                          : null,
+                      onTap: () => _openItem(context, ref, item),
                     ),
                   const SizedBox(height: 8),
                 ],
@@ -58,6 +60,30 @@ class UpcomingPaymentsScreen extends ConsumerWidget {
       await ref
           .read(installmentsProvider.notifier)
           .setPaidCount(item.sourceId, nextCount);
+      return;
+    }
+    if (item.kind == FinanceKind.bill) {
+      final turningOn = !item.isPaid;
+      await ref.read(billsProvider.notifier).togglePaid(item.sourceId);
+      if (!turningOn ||
+          item.recurrence == null ||
+          item.recurrence == PaymentRecurrence.none) {
+        return;
+      }
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Ödendi olarak işaretlendi'),
+          action: SnackBarAction(
+            label: 'Sonraki dönem',
+            onPressed: () {
+              ref
+                  .read(billsProvider.notifier)
+                  .advanceToNextPeriod(item.sourceId);
+            },
+          ),
+        ),
+      );
       return;
     }
     if (item.kind != FinanceKind.planned) return;
@@ -83,6 +109,39 @@ class UpcomingPaymentsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _openItem(BuildContext context, WidgetRef ref, ScheduledItem item) {
+    if (item.kind == FinanceKind.bill) {
+      Bill? bill;
+      for (final candidate in ref.read(billsProvider)) {
+        if (candidate.id == item.sourceId) {
+          bill = candidate;
+          break;
+        }
+      }
+      if (bill == null) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => BillFormScreen(existing: bill)),
+      );
+      return;
+    }
+    if (item.kind == FinanceKind.creditCard) {
+      CreditCard? card;
+      for (final candidate in ref.read(creditCardsProvider)) {
+        if (candidate.id == item.sourceId) {
+          card = candidate;
+          break;
+        }
+      }
+      if (card == null) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => CardFormScreen(existing: card)),
+      );
+      return;
+    }
+    if (item.kind != FinanceKind.planned) return;
+    _editPlanned(context, ref, item);
   }
 
   void _editPlanned(BuildContext context, WidgetRef ref, ScheduledItem item) {
@@ -147,7 +206,7 @@ class _EmptyPayments extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Kira, fatura veya diğer planlı ödemeleri ekleyerek burada takip edebilirsin.',
+              'Kayıtlı kart borcu veya fatura eklediğinde yaklaşan ödemeler burada listelenir.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade600),
             ),

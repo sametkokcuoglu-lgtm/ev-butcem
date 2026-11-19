@@ -25,11 +25,17 @@ class CategoryAdapter extends TypeAdapter<Category> {
   void write(BinaryWriter writer, Category obj) {
     writer
       ..writeByte(6)
-      ..writeByte(0)..write(obj.id)
-      ..writeByte(1)..write(obj.name)
-      ..writeByte(2)..write(obj.icon)
-      ..writeByte(3)..write(obj.colorValue)
-      ..writeByte(4)..write(obj.isIncome)
-      ..writeByte(5)..write(obj.isSystem);
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.name)
+      ..writeByte(2)
+      ..write(obj.icon)
+      ..writeByte(3)
+      ..write(obj.colorValue)
+      ..writeByte(4)
+      ..write(obj.isIncome)
+      ..writeByte(5)
+      ..write(obj.isSystem);
   }
 }

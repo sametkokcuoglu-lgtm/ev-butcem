@@ -9,7 +9,7 @@ import '../utils/dates.dart';
 import '../utils/format.dart';
 import '../widgets/finance_month_calendar.dart';
 import '../widgets/upcoming_payment_tile.dart';
-import 'payment_form_screen.dart';
+import 'bill_form_screen.dart';
 
 class FinanceCalendarScreen extends ConsumerWidget {
   const FinanceCalendarScreen({super.key});
@@ -35,11 +35,11 @@ class FinanceCalendarScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const PaymentFormScreen()),
+            MaterialPageRoute(builder: (_) => const BillFormScreen()),
           );
         },
         icon: const Icon(Iconsax.add),
-        label: const Text('Ödeme Ekle'),
+        label: const Text('Fatura Ekle'),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
@@ -114,6 +114,10 @@ class FinanceCalendarScreen extends ConsumerWidget {
       await ref
           .read(installmentsProvider.notifier)
           .setPaidCount(item.sourceId, nextCount);
+      return;
+    }
+    if (item.kind == FinanceKind.bill) {
+      await ref.read(billsProvider.notifier).togglePaid(item.sourceId);
       return;
     }
     if (item.kind == FinanceKind.planned) {

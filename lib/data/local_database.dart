@@ -1,6 +1,7 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/account.dart';
+import '../models/bill.dart';
 import '../models/category.dart';
 import '../models/credit_card.dart';
 import '../models/installment.dart';
@@ -14,6 +15,7 @@ const String accountBoxName = 'accounts';
 const String creditCardBoxName = 'credit_cards';
 const String installmentBoxName = 'installments';
 const String plannedPaymentBoxName = 'planned_payments';
+const String billBoxName = 'bills';
 
 Future<void> initLocalDatabase() async {
   await Hive.initFlutter();
@@ -25,6 +27,7 @@ Future<void> initLocalDatabase() async {
   await Hive.openBox<CreditCard>(creditCardBoxName);
   await Hive.openBox<Installment>(installmentBoxName);
   await Hive.openBox<PlannedPayment>(plannedPaymentBoxName);
+  await Hive.openBox<Bill>(billBoxName);
 
   final categories = Hive.box<Category>(categoryBoxName);
   if (categories.isEmpty) {
@@ -40,6 +43,8 @@ void _registerAdapters() {
   if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(AccountAdapter());
   if (!Hive.isAdapterRegistered(3)) Hive.registerAdapter(CreditCardAdapter());
   if (!Hive.isAdapterRegistered(4)) Hive.registerAdapter(InstallmentAdapter());
-  if (!Hive.isAdapterRegistered(5))
+  if (!Hive.isAdapterRegistered(5)) {
     Hive.registerAdapter(PlannedPaymentAdapter());
+  }
+  if (!Hive.isAdapterRegistered(6)) Hive.registerAdapter(BillAdapter());
 }

@@ -7,8 +7,8 @@ import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import '../utils/payment_schedule.dart';
 import '../widgets/upcoming_payment_tile.dart';
+import 'bill_form_screen.dart';
 import 'finance_calendar_screen.dart';
-import 'payment_form_screen.dart';
 import 'upcoming_payments_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -102,7 +102,7 @@ class DashboardScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Text(
-                  'Yaklaşan ödeme yok',
+                  'Yaklaşan ödeme yok. Kart borcu veya fatura eklediğinde burada görünür.',
                   style: TextStyle(color: Colors.grey.shade600),
                 ),
               )
@@ -129,9 +129,9 @@ class DashboardScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _open(context, const PaymentFormScreen()),
+        onPressed: () => _open(context, const BillFormScreen()),
         icon: const Icon(Iconsax.add),
-        label: const Text('Ödeme Ekle'),
+        label: const Text('Fatura Ekle'),
       ),
     );
   }

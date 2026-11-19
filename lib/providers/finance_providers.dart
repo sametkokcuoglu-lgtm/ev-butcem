@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/local_database.dart';
 import '../data/payment_stores.dart';
 import '../models/account.dart';
+import '../models/bill.dart';
 import '../models/category.dart';
 import '../models/credit_card.dart';
 import '../models/installment.dart';
@@ -21,6 +22,11 @@ final plannedPaymentStoreProvider = Provider<PlannedPaymentStore>((ref) {
 final installmentStoreProvider = Provider<InstallmentStore>((ref) {
   return HiveInstallmentStore();
 });
+
+final billStoreProvider = Provider<BillStore>((ref) => HiveBillStore());
+
+final creditCardStoreProvider =
+    Provider<CreditCardStore>((ref) => HiveCreditCardStore());
 
 final plannedPaymentsProvider =
     NotifierProvider<PlannedPaymentsNotifier, List<PlannedPayment>>(
@@ -77,6 +83,61 @@ class PlannedPaymentsNotifier extends Notifier<List<PlannedPayment>> {
   }
 }
 
+final billsProvider =
+    NotifierProvider<BillsNotifier, List<Bill>>(BillsNotifier.new);
+
+class BillsNotifier extends Notifier<List<Bill>> {
+  @override
+  List<Bill> build() => _sorted(ref.watch(billStoreProvider).load());
+
+  Future<void> upsert(Bill bill) async {
+    await ref.read(billStoreProvider).save(bill);
+    state = _sorted(ref.read(billStoreProvider).load());
+  }
+
+  Future<void> delete(String id) async {
+    await ref.read(billStoreProvider).delete(id);
+    state = _sorted(ref.read(billStoreProvider).load());
+  }
+
+  Future<void> togglePaid(String id) async {
+    final current = _find(id);
+    if (current == null) return;
+    await upsert(current.copyWith(isPaid: !current.isPaid));
+  }
+
+  Future<void> advanceToNextPeriod(String id) async {
+    final current = _find(id);
+    if (current == null || current.recurrence == PaymentRecurrence.none) {
+      return;
+    }
+    final months = current.recurrence == PaymentRecurrence.monthly ? 1 : 12;
+    await upsert(
+      current.copyWith(
+        dueDate: addMonths(dateOnly(current.dueDate), months),
+        isPaid: false,
+      ),
+    );
+  }
+
+  Bill? _find(String id) {
+    for (final bill in state) {
+      if (bill.id == id) return bill;
+    }
+    return null;
+  }
+
+  List<Bill> _sorted(List<Bill> items) {
+    final copy = List<Bill>.of(items);
+    copy.sort((a, b) {
+      final byDate = a.dueDate.compareTo(b.dueDate);
+      if (byDate != 0) return byDate;
+      return a.title.compareTo(b.title);
+    });
+    return copy;
+  }
+}
+
 final installmentsProvider =
     NotifierProvider<InstallmentsNotifier, List<Installment>>(
         InstallmentsNotifier.new);
@@ -111,9 +172,24 @@ final categoriesProvider = Provider<List<Category>>((ref) {
   return readHiveList<Category>(categoryBoxName);
 });
 
-final creditCardsProvider = Provider<List<CreditCard>>((ref) {
-  return readHiveList<CreditCard>(creditCardBoxName);
-});
+final creditCardsProvider =
+    NotifierProvider<CreditCardsNotifier, List<CreditCard>>(
+        CreditCardsNotifier.new);
+
+class CreditCardsNotifier extends Notifier<List<CreditCard>> {
+  @override
+  List<CreditCard> build() => ref.watch(creditCardStoreProvider).load();
+
+  Future<void> upsert(CreditCard card) async {
+    await ref.read(creditCardStoreProvider).save(card);
+    state = ref.read(creditCardStoreProvider).load();
+  }
+
+  Future<void> delete(String id) async {
+    await ref.read(creditCardStoreProvider).delete(id);
+    state = ref.read(creditCardStoreProvider).load();
+  }
+}
 
 final transactionsProvider = Provider<List<Transaction>>((ref) {
   return readHiveList<Transaction>(transactionBoxName);
@@ -123,6 +199,7 @@ final upcomingSectionsProvider = Provider<List<PaymentSection>>((ref) {
   return buildUpcomingSections(
     now: ref.watch(clockProvider)(),
     planned: ref.watch(plannedPaymentsProvider),
+    bills: ref.watch(billsProvider),
     cards: ref.watch(creditCardsProvider),
     installments: ref.watch(installmentsProvider),
     accounts: ref.watch(accountsProvider),
@@ -145,6 +222,7 @@ final monthFinanceProvider = Provider<MonthFinance>((ref) {
     month: month,
     today: ref.watch(clockProvider)(),
     planned: ref.watch(plannedPaymentsProvider),
+    bills: ref.watch(billsProvider),
     cards: ref.watch(creditCardsProvider),
     installments: ref.watch(installmentsProvider),
     accounts: ref.watch(accountsProvider),

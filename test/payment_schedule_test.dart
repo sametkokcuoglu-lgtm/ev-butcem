@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:ev_butcem/data/payment_stores.dart';
 import 'package:ev_butcem/models/account.dart';
+import 'package:ev_butcem/models/bill.dart';
 import 'package:ev_butcem/models/category.dart';
 import 'package:ev_butcem/models/credit_card.dart';
 import 'package:ev_butcem/models/installment.dart';
@@ -383,6 +384,157 @@ void main() {
       expect(december.entries.single.date, DateTime(2026, 12, 5));
       expect(december.entries.single.isPaid, isFalse);
       expect(december.entries.single.canTogglePaid, isFalse);
+    });
+  });
+
+  group('fatura ve kart son ödeme', () {
+    test('borcu olan kart son ödeme gününde, ekstre gününde değil', () {
+      final card = CreditCard(
+        id: 'card',
+        name: 'Platinum',
+        bankName: 'Ziraat',
+        limit: 20000,
+        currentDebt: 4250,
+        statementDay: 1,
+        dueDay: 20,
+      );
+      final sections = buildUpcomingSections(
+        now: DateTime(2026, 11, 18),
+        planned: const [],
+        cards: [card],
+        installments: const [],
+      );
+      final item = sections.single.items.single;
+      expect(item.date, DateTime(2026, 11, 20));
+      expect(item.amount, 4250);
+      expect(item.kind, FinanceKind.creditCard);
+      expect(item.subtitle, 'Ziraat');
+      expect(sections.single.group, PaymentGroup.thisWeek);
+    });
+
+    test('borcu sıfır veya pasif kart listeye girmez', () {
+      CreditCard card({double debt = 100, bool active = true}) {
+        return CreditCard(
+          id: 'card',
+          name: 'Platinum',
+          bankName: 'Ziraat',
+          limit: 20000,
+          currentDebt: debt,
+          statementDay: 10,
+          dueDay: 20,
+          isActive: active,
+        );
+      }
+
+      expect(
+        buildUpcomingSections(
+          now: now,
+          planned: const [],
+          cards: [card(debt: 0), card(active: false)],
+          installments: const [],
+        ),
+        isEmpty,
+      );
+    });
+
+    test('kayıtlı fatura ve kart borcu birlikte sıralanır', () {
+      final sections = buildUpcomingSections(
+        now: now,
+        planned: const [],
+        bills: [
+          Bill(
+            id: 'electric',
+            title: 'Elektrik',
+            amount: 875,
+            dueDate: DateTime(2026, 11, 10),
+            recurrence: PaymentRecurrence.monthly,
+            categoryId: 'cat',
+          ),
+        ],
+        cards: [
+          CreditCard(
+            id: 'card',
+            name: 'Platinum',
+            bankName: 'Ziraat',
+            limit: 20000,
+            currentDebt: 4250,
+            statementDay: 1,
+            dueDay: 18,
+          ),
+        ],
+        installments: const [],
+        categories: [
+          Category(
+            id: 'cat',
+            name: 'Faturalar',
+            icon: '💡',
+            colorValue: 1,
+            isIncome: false,
+          ),
+        ],
+      );
+
+      final items = sections.expand((section) => section.items).toList();
+      expect(items.map((item) => item.title), [
+        'Elektrik',
+        'Platinum',
+        'Elektrik',
+      ]);
+      expect(items.first.kind, FinanceKind.bill);
+      expect(items.first.subtitle, contains('Faturalar'));
+      expect(items[1].date, DateTime(2026, 11, 18));
+      expect(items[1].kind, FinanceKind.creditCard);
+      expect(items.last.date, DateTime(2026, 12, 10));
+    });
+
+    test('kart borcu güncellenince yaklaşan ödeme düşer', () async {
+      final cards = MemoryCreditCardStore([
+        CreditCard(
+          id: 'card',
+          name: 'Platinum',
+          bankName: 'Ziraat',
+          limit: 20000,
+          currentDebt: 4250,
+          statementDay: 1,
+          dueDay: 25,
+        ),
+      ]);
+      final bills = MemoryBillStore([
+        Bill(
+          id: 'water',
+          title: 'Su',
+          amount: 220,
+          dueDate: DateTime(2026, 11, 20),
+        ),
+      ]);
+      final container = ProviderContainer(
+        overrides: [
+          clockProvider.overrideWith((ref) => () => DateTime(2026, 11, 18)),
+          creditCardStoreProvider.overrideWith((ref) => cards),
+          billStoreProvider.overrideWith((ref) => bills),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      List<String> titles() {
+        return container
+            .read(upcomingSectionsProvider)
+            .expand((section) => section.items)
+            .map((item) => item.title)
+            .toList();
+      }
+
+      expect(titles(), containsAll(['Platinum', 'Su']));
+
+      final card = container.read(creditCardsProvider).single;
+      await container
+          .read(creditCardsProvider.notifier)
+          .upsert(card.copyWith(currentDebt: 0));
+      expect(titles(), ['Su']);
+      expect(titles(), isNot(contains('Platinum')));
+
+      await container.read(billsProvider.notifier).delete('water');
+      expect(titles(), isEmpty);
     });
   });
 

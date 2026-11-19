@@ -1,6 +1,6 @@
 import 'planned_payment.dart';
 
-enum FinanceKind { planned, creditCard, installment, income, expense }
+enum FinanceKind { planned, bill, creditCard, installment, income, expense }
 
 enum PaymentGroup { overdue, today, thisWeek, later }
 
@@ -44,12 +44,14 @@ class ScheduledItem {
 
   bool get isObligation =>
       kind == FinanceKind.planned ||
+      kind == FinanceKind.bill ||
       kind == FinanceKind.creditCard ||
       kind == FinanceKind.installment;
 
   String get kindLabel => switch (kind) {
         FinanceKind.planned => 'Planlı ödeme',
-        FinanceKind.creditCard => 'Kart',
+        FinanceKind.bill => 'Fatura',
+        FinanceKind.creditCard => 'Kart son ödeme',
         FinanceKind.installment => 'Taksit',
         FinanceKind.income => 'Gelir',
         FinanceKind.expense => 'Gider',

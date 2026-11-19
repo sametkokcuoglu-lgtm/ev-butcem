@@ -80,8 +80,9 @@ class _PaymentFormScreenState extends ConsumerState<PaymentFormScreen> {
                 border: OutlineInputBorder(),
               ),
               validator: (value) {
-                if (value == null || value.trim().isEmpty)
+                if (value == null || value.trim().isEmpty) {
                   return 'Başlık gerekli';
+                }
                 return null;
               },
             ),
@@ -97,8 +98,9 @@ class _PaymentFormScreenState extends ConsumerState<PaymentFormScreen> {
               ),
               validator: (value) {
                 final amount = parseTryInput(value ?? '');
-                if (amount == null || amount <= 0)
+                if (amount == null || amount <= 0) {
                   return 'Geçerli bir tutar girin';
+                }
                 return null;
               },
             ),
