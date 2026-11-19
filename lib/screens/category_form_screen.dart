@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/category.dart';
 import '../providers/transaction_provider.dart';
 import '../services/category_repository.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
+import '../widgets/content_frame.dart';
 
 /// Kategori ekleme / düzenleme formu.
 ///
@@ -90,10 +92,11 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(_isEditing ? 'Kategoriyi Düzenle' : 'Yeni Kategori')),
-      body: Form(
+      body: ContentFrame(
+        child: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.page),
           children: [
             Center(
               child: CircleAvatar(
@@ -133,7 +136,6 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
               decoration: const InputDecoration(
                 labelText: 'Kategori adı',
                 hintText: 'Örn. Aidat',
-                border: OutlineInputBorder(),
               ),
               validator: (v) => notifier.validateName(
                 v ?? '',
@@ -191,11 +193,12 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
             ),
           ],
         ),
+        ),
       ),
       // Kaydet düğmesi her zaman görünür (simge listesi uzun olabilir).
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.sm, AppSpacing.page, AppSpacing.md),
           child: FilledButton.icon(
             key: const Key('saveCategoryButton'),
             onPressed: _saving ? null : _save,

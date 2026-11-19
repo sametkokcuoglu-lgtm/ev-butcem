@@ -51,9 +51,10 @@ lib/
 - [x] Riverpod ile state management (işlemler)
 - [x] Gerçek veri bağlama (Hive CRUD, işlemler)
 - [x] Gelir/Gider ekleme formu
+- [x] Raporlar (kategori halkası ve aylık çubuk grafik)
+- [x] Bütçe, fatura ve ekstre ekranları (örnek veriyle)
 - [ ] Hesap ve kart ekleme formları
 - [ ] Taksit ekranı
-- [ ] Raporlar
 
 ---
 
